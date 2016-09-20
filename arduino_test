@@ -1,0 +1,234 @@
+#include<LiquidCrystal.h>
+#include<Stepper.h>
+
+#define up 1
+#define down 2
+#define right 0
+#define left 3
+#define select 4
+#define steps 200
+
+int num;
+char msg_mode[3][6]={"slow","midd","fast"};
+int NUM_KEYS=5;
+int adc_key_in;
+int nnn=1;
+int key=-1;
+int adc_key_val[5]{30,150,360,535,760};
+LiquidCrystal lcd(8,11,9,4,5,6,7);
+int site=up;
+int select_mode=0;
+int select_frep=4;
+int select_size=4;
+int steps_delay=0;
+int steps_speed=0;
+int steps_move=0;
+Stepper stepper(steps,0,1,2,3);
+void setup ()
+{
+ lcd.clear();
+ lcd.begin(16,2);
+ lcd.setCursor(2,0);
+ lcd.print("Welcome!");
+ lcd.setCursor(1,1);
+ lcd.print("to my Arduino!");
+ delay(3000);
+ lcd.clear();
+}
+void loop()
+{
+ machine_run();
+}
+void machine_run()
+{
+  lcd.print("select site!");
+  stepper.setSpeed(100);
+  adjust_site();
+  delay(1000);
+  lcd.print("anykey to set!");
+  default_run();
+  
+  firstpage_show();
+  while(1)
+  {
+    delay(150);
+    adc_key_in=analogRead(A0);
+    key=get_key(adc_key_in);
+    if(key==up){moveup();}
+    if(key==down){movedown();}
+    if(key==select)
+    {
+      secondpage_show();
+      while(1)
+      {
+        delay(150);
+        adc_key_in=analogRead(A0);
+        key=get_key(adc_key_in);
+        if(key==up)
+          {if(select_frep<40){select_frep++;lcd.setCursor(8,0);lcd.print("   ");lcd.setCursor(8,0);lcd.print(select_frep);}}
+        if(key==down)
+          {if(select_frep>4){select_frep--;lcd.setCursor(8,0);lcd.print("  ");lcd.setCursor(8,0);lcd.print(select_frep);}}
+        if(key==select)
+        {
+          thirdpage_show();
+          while(1)
+          {
+            delay(150);
+            adc_key_in=analogRead(A0);
+            key=get_key(adc_key_in);
+            if(key==up)
+            {if(select_size<40){select_size++;lcd.setCursor(7,0);lcd.print("  ");lcd.setCursor(7,0);lcd.print(select_size*100);}}
+            if(key==down)
+            {if(select_size>4){select_size--;lcd.setCursor(7,0);lcd.print("  ");lcd.setCursor(7,0);lcd.print(select_size*100);}}
+            if(key==select)
+            {
+              fourthpage_show();
+              while(1)
+              {motor_control();}
+            }
+            
+          }
+        }
+    }
+    }
+  }
+}
+
+
+void adjust_site()
+{
+  while(1)
+  {
+    delay(150); 
+    adc_key_in=analogRead(A0);
+    key=get_key(adc_key_in);
+    if(key==up){stepper.step(-10);}
+    if(key==down){stepper.step(10);}
+    if(key==select){lcd.clear();break;}
+  }
+}
+
+
+void default_run()
+{
+  while(1)
+  {
+    if(nnn>0&&nnn<300){stepper.step(10);if(nnn==300){delay(100);}}
+    if(nnn>300&&nnn<=600){stepper.step(-10);if(nnn==600){delay(100);}}
+    adc_key_in=analogRead(A0);
+    key=get_key(adc_key_in);
+    if(key==select||key==up||key==down){break;}
+    nnn++;if(nnn==601){nnn=1;}
+  }
+}
+
+void firstpage_show()
+{
+  lcd.clear();
+  lcd.setCursor(0,0);lcd.print("MODE:");
+  lcd.setCursor(8,0);lcd.print("* slow");
+  lcd.setCursor(0,0);lcd.print(" midd");
+}
+
+void secondpage_show()
+{
+  lcd.clear();
+  lcd.setCursor(0,0);lcd.print("FREQ");
+  lcd.setCursor(12,0);lcd.print("HZ");
+  lcd.setCursor(0,1);lcd.print(select_mode);
+  lcd.setCursor(8,0);lcd.print(select_frep);
+}
+void thirdpage_show()
+{
+  lcd.clear();
+  lcd.setCursor(0,0);lcd.print("VOLL");
+  lcd.setCursor(7,0);lcd.print(select_size*100);
+  lcd.setCursor(13,0);lcd.print("mL");
+  lcd.setCursor(0,1);lcd.print(select_mode);
+  lcd.setCursor(3,1);lcd.print(select_frep);
+}
+
+void fourthpage_show()
+{
+  lcd.clear();
+  lcd.setCursor(0,0);lcd.print(select_mode);
+  lcd.print(" ");lcd.print(select_frep);
+  lcd.print(" ");lcd.print(select_size*100);
+}
+
+
+
+void moveup()
+{
+  if(site==up)
+  {
+   if(select_mode==1){
+      lcd.setCursor(10,0);
+      lcd.print(msg_mode[0]);
+      lcd.setCursor(10,1);
+      lcd.print(msg_mode[1]);
+      select_mode--;}
+  }
+  if(site==down)
+  {
+    lcd.setCursor(8,1); 
+    lcd.print("  ");
+    lcd.setCursor(8,0);
+    lcd.print("* ");
+    select_mode--;
+    site=up;
+  }
+}
+
+void movedown()
+{
+  if(site==up)
+  {
+    lcd.setCursor(8,0); 
+    lcd.print("  ");
+    lcd.setCursor(8,1);
+    lcd.print("* ");
+    select_mode++;
+    site=down;
+  }
+  else if(site==down)
+  {
+     if(select_mode==1){
+      lcd.setCursor(10,0); 
+      lcd.print(msg_mode[1]);
+      lcd.setCursor(10,1); 
+      lcd.print(msg_mode[2]);
+      select_mode++;}
+   }
+}
+
+
+int get_key(unsigned int input)
+{
+        int k;
+        for (k = 0; k < NUM_KEYS; k++)
+        { if (input < adc_key_val[k])
+                {  return k; }
+        }
+       if (k >= NUM_KEYS)
+        k = -1;        
+        return k;
+}
+
+ void motor_control()
+ {
+   steps_speed=select_frep*2*(1+0.5*select_mode);     
+   steps_move=select_size*100/20;                   
+   steps_delay=(steps-steps_move)*15/steps_speed;  
+   lcd.setCursor(0,1); lcd.print(steps_speed);lcd.print("  ");lcd.print(steps_move);lcd.print("  ");lcd.print(steps_delay); 
+   stepper.setSpeed(steps_speed);            
+   while(1)
+   {
+    stepper.step(steps_move*10);       
+    delay(steps_delay);                
+    stepper.step((-1)*steps_move*10); 
+    delay(steps_delay);              
+   }
+ }
+
+
